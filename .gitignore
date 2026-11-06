@@ -1,0 +1,7 @@
+# Secretos: la clave de Groq nunca va al repositorio
+.env
+
+# Entorno virtual y cachés de Python
+.venv/
+__pycache__/
+*.pyc
