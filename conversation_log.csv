@@ -1,0 +1,61 @@
+actor,message,tool_call,timestamp
+user,"Buenos días, ¿qué productos están por agotarse?",,2026-11-09T20:05:39+01:00
+agent,"{""threshold"":10}",get_low_stock_alerts,2026-11-09T20:05:40+01:00
+tool,"[{""name"": ""Cacao en polvo"", ""quantity"": 3.5, ""unit"": ""kg"", ""id"": 9}, {""name"": ""Leche de avena"", ""quantity"": 6.0, ""unit"": ""litros"", ""id"": 4}, {""name"": ""Café en grano robusta"", ""quantity"": 8.0, ""unit"": ""bolsas (1 kg)"", ""id"": 2}]",get_low_stock_alerts,2026-11-09T20:05:40+01:00
+agent,"¡Buenos días! Estos son los productos que están por debajo del umbral de 10 unidades:
+
+- **Cacao en polvo** – 3.5 kg  
+- **Leche de avena** – 6 litros  
+- **Café en grano robusta** – 8 bolsas (1 kg cada una)
+
+Avísame si quieres reordenar alguno o si necesitas más detalle. 😊",,2026-11-09T20:05:41+01:00
+user,Acaban de llegar 30 unidades de leche de avena,,2026-11-09T20:05:41+01:00
+agent,{},list_inventory,2026-11-09T20:05:42+01:00
+tool,"[{""name"": ""Café en grano arábica"", ""quantity"": 25.0, ""unit"": ""bolsas (1 kg)"", ""id"": 1}, {""name"": ""Café en grano robusta"", ""quantity"": 8.0, ""unit"": ""bolsas (1 kg)"", ""id"": 2}, {""name"": ""Leche entera"", ""quantity"": 48.0, ""unit"": ""litros"", ""id"": 3}, {""name"": ""Leche de avena"", ""quantity"": 6.0, ""unit"": ""litros"", ""id"": 4}, {""name"": ""Vasos de cartón 8 oz"", ""quantity"": 350.0, ""unit"": ""unidades"", ""id"": 5}, {""name"": ""Tapas para vasos 8 oz"", ""quantity"": 120.0, ""unit"": ""unidades"", ""id"": 6}, {""name"": ""Azúcar en sobres"", ""quantity"": 10.0, ""unit"": ""cajas (1000 sobres)"", ""id"": 7}, {""name"": ""Sirope de vainilla"", ""quantity"": 12.0, ""unit"": ""botellas (1 l)"", ""id"": 8}, {""name"": ""Cacao en polvo"", ""quantity"": 3.5, ""unit"": ""kg"", ""id"": 9}, {""name"": ""Filtros de papel"", ""quantity"": 15.0, ""unit"": ""paquetes"", ""id"": 10}]",list_inventory,2026-11-09T20:05:42+01:00
+agent,"{""delta"":30,""product_id"":4}",update_stock,2026-11-09T20:05:42+01:00
+tool,"{""name"": ""Leche de avena"", ""quantity"": 36.0, ""unit"": ""litros"", ""id"": 4}",update_stock,2026-11-09T20:05:42+01:00
+agent,"¡Listo! Hemos sumado **30 litros** a la leche de avena. Ahora tienes **36 litros** en stock. 👍
+
+¿Algo más que necesites?",,2026-11-09T20:05:42+01:00
+user,Vendimos 12 bolsas de arábica hoy,,2026-11-09T20:05:42+01:00
+agent,{},list_inventory,2026-11-09T20:05:43+01:00
+tool,"[{""name"": ""Café en grano arábica"", ""quantity"": 25.0, ""unit"": ""bolsas (1 kg)"", ""id"": 1}, {""name"": ""Café en grano robusta"", ""quantity"": 8.0, ""unit"": ""bolsas (1 kg)"", ""id"": 2}, {""name"": ""Leche entera"", ""quantity"": 48.0, ""unit"": ""litros"", ""id"": 3}, {""name"": ""Leche de avena"", ""quantity"": 36.0, ""unit"": ""litros"", ""id"": 4}, {""name"": ""Vasos de cartón 8 oz"", ""quantity"": 350.0, ""unit"": ""unidades"", ""id"": 5}, {""name"": ""Tapas para vasos 8 oz"", ""quantity"": 120.0, ""unit"": ""unidades"", ""id"": 6}, {""name"": ""Azúcar en sobres"", ""quantity"": 10.0, ""unit"": ""cajas (1000 sobres)"", ""id"": 7}, {""name"": ""Sirope de vainilla"", ""quantity"": 12.0, ""unit"": ""botellas (1 l)"", ""id"": 8}, {""name"": ""Cacao en polvo"", ""quantity"": 3.5, ""unit"": ""kg"", ""id"": 9}, {""name"": ""Filtros de papel"", ""quantity"": 15.0, ""unit"": ""paquetes"", ""id"": 10}]",list_inventory,2026-11-09T20:05:43+01:00
+agent,"{""delta"":-12,""product_id"":1}",update_stock,2026-11-09T20:05:43+01:00
+tool,"{""name"": ""Café en grano arábica"", ""quantity"": 13.0, ""unit"": ""bolsas (1 kg)"", ""id"": 1}",update_stock,2026-11-09T20:05:43+01:00
+agent,"He restado **12 bolsas (1 kg cada una)** del café en grano arábica. Quedan **13 bolsas** en stock. 👍
+
+¿Qué más necesitas?¡Listo! Si necesitas consultar otro producto, registrar más entradas o salidas, o ver qué se está agotando, solo dime. 😊",,2026-11-09T20:05:44+01:00
+user,Necesito sacar 2 litros de leche,,2026-11-09T20:05:44+01:00
+agent,"Entiendo, pero tengo dos tipos de leche en el inventario (leche entera y leche de avena). ¿De cuál quieres sacar los 2 litros? 😊",,2026-11-09T20:05:44+01:00
+user,La entera,,2026-11-09T20:05:44+01:00
+agent,"{""delta"":-2,""product_id"":3}",update_stock,2026-11-09T20:05:51+01:00
+tool,"{""name"": ""Leche entera"", ""quantity"": 46.0, ""unit"": ""litros"", ""id"": 3}",update_stock,2026-11-09T20:05:51+01:00
+agent,"He **restado 2 litros** de leche entera. Ahora tienes **46 litros** en stock. 👍
+
+¿Algo más?",,2026-11-09T20:05:56+01:00
+user,"Añade sirope de caramelo, 6 botellas, y dime si ya sale en las alertas",,2026-11-09T20:05:56+01:00
+agent,"{""name"":""Sirope de caramelo"",""quantity"":6,""unit"":""botellas (1 l)""}",add_product,2026-11-09T20:06:08+01:00
+tool,"{""name"": ""Sirope de caramelo"", ""quantity"": 6.0, ""unit"": ""botellas (1 l)"", ""id"": 11}",add_product,2026-11-09T20:06:08+01:00
+agent,"{""threshold"":10}",get_low_stock_alerts,2026-11-09T20:06:27+01:00
+tool,"[{""name"": ""Cacao en polvo"", ""quantity"": 3.5, ""unit"": ""kg"", ""id"": 9}, {""name"": ""Sirope de caramelo"", ""quantity"": 6.0, ""unit"": ""botellas (1 l)"", ""id"": 11}, {""name"": ""Café en grano robusta"", ""quantity"": 8.0, ""unit"": ""bolsas (1 kg)"", ""id"": 2}]",get_low_stock_alerts,2026-11-09T20:06:27+01:00
+agent,"¡He añadido **6 botellas (1 L)** de sirope de caramelo! 🎉
+
+En la lista de alertas (umbral < 10) ahora aparecen:
+
+- Cacao en polvo – 3.5 kg  
+- **Sirope de caramelo – 6 botellas**  
+- Café en grano robusta – 8 bolsas (1 kg)
+
+Así que el sirope de caramelo sí está en la lista de productos que se están agotando. ¿Quieres pedir más o revisar algo más? 😊",,2026-11-09T20:06:41+01:00
+user,¿Cuánta leche de avena nos queda?,,2026-11-09T20:06:42+01:00
+agent,{},list_inventory,2026-11-09T20:06:42+01:00
+tool,"[{""name"": ""Café en grano arábica"", ""quantity"": 13.0, ""unit"": ""bolsas (1 kg)"", ""id"": 1}, {""name"": ""Café en grano robusta"", ""quantity"": 8.0, ""unit"": ""bolsas (1 kg)"", ""id"": 2}, {""name"": ""Leche entera"", ""quantity"": 46.0, ""unit"": ""litros"", ""id"": 3}, {""name"": ""Leche de avena"", ""quantity"": 36.0, ""unit"": ""litros"", ""id"": 4}, {""name"": ""Vasos de cartón 8 oz"", ""quantity"": 350.0, ""unit"": ""unidades"", ""id"": 5}, {""name"": ""Tapas para vasos 8 oz"", ""quantity"": 120.0, ""unit"": ""unidades"", ""id"": 6}, {""name"": ""Azúcar en sobres"", ""quantity"": 10.0, ""unit"": ""cajas (1000 sobres)"", ""id"": 7}, {""name"": ""Sirope de vainilla"", ""quantity"": 12.0, ""unit"": ""botellas (1 l)"", ""id"": 8}, {""name"": ""Cacao en polvo"", ""quantity"": 3.5, ""unit"": ""kg"", ""id"": 9}, {""name"": ""Filtros de papel"", ""quantity"": 15.0, ""unit"": ""paquetes"", ""id"": 10}, {""name"": ""Sirope de caramelo"", ""quantity"": 6.0, ""unit"": ""botellas (1 l)"", ""id"": 11}]",list_inventory,2026-11-09T20:06:42+01:00
+agent,Te quedan **36 litros** de leche de avena. ¡Aún hay suficiente!,,2026-11-09T20:06:52+01:00
+user,Se nos han roto 3 paquetes de filtros,,2026-11-09T20:06:52+01:00
+agent,"{""delta"":-3,""product_id"":10}",update_stock,2026-11-09T20:06:56+01:00
+tool,"{""name"": ""Filtros de papel"", ""quantity"": 12.0, ""unit"": ""paquetes"", ""id"": 10}",update_stock,2026-11-09T20:06:56+01:00
+agent,"He restado 3 paquetes de filtros de papel. Ahora tienes **12 paquetes**. Todavía está por encima del umbral de 10, así que no hay alerta.",,2026-11-09T20:07:00+01:00
+user,Avísame de lo que esté por debajo de 5,,2026-11-09T20:07:00+01:00
+agent,"{""threshold"":5}",get_low_stock_alerts,2026-11-09T20:07:03+01:00
+tool,"[{""name"": ""Cacao en polvo"", ""quantity"": 3.5, ""unit"": ""kg"", ""id"": 9}]",get_low_stock_alerts,2026-11-09T20:07:03+01:00
+agent,⚠️ **Cacao en polvo** está bajo: 3.5 kg. Es el único producto por debajo de 5.,,2026-11-09T20:07:08+01:00
