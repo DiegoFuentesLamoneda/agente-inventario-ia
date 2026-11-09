@@ -7,9 +7,12 @@ Arranque (con la API ya en marcha en otro terminal):
     uv run python agent.py
 """
 
+import csv
 import json
 import os
 import sys
+from datetime import datetime
+from pathlib import Path
 
 import httpx
 import openai
@@ -20,6 +23,33 @@ load_dotenv()
 API_URL = os.getenv("INVENTORY_API_URL", "http://127.0.0.1:8000")
 MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 MAX_STEPS = 8  # vueltas máximas del bucle por mensaje: freno de seguridad
+LOG_FILE = Path(__file__).resolve().parent / "conversation_log.csv"
+LOG_FIELDS = ["actor", "message", "tool_call", "timestamp"]
+
+
+def log_event(actor: str, message: str, tool_call: str = "") -> None:
+    """Añade una fila a conversation_log.csv. Nunca borra ni reescribe las anteriores.
+
+    actor: "user" (Carla), "agent" (el LLM: respuestas y peticiones de tools)
+    o "tool" (el resultado que devolvió la API).
+    """
+    is_new = not LOG_FILE.exists() or LOG_FILE.stat().st_size == 0
+    # Modo "a" (append): el sistema operativo escribe siempre al final del fichero.
+    # Se abre y se cierra en cada evento, así cada fila queda guardada en disco al
+    # momento y un Ctrl+C a mitad de sesión no pierde nada.
+    with LOG_FILE.open("a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=LOG_FIELDS)
+        if is_new:
+            writer.writeheader()
+        writer.writerow(
+            {
+                "actor": actor,
+                "message": message,
+                "tool_call": tool_call,
+                # ISO 8601 con zona horaria, p. ej. 2026-11-09T19:45:03+01:00
+                "timestamp": datetime.now().astimezone().isoformat(timespec="seconds"),
+            }
+        )
 
 SYSTEM_PROMPT = """Eres el asistente de inventario de la tienda de Carla, que vende \
 suministros para cafeterías. Carla te habla en lenguaje natural para consultar el \
@@ -223,6 +253,7 @@ def run_turn(messages: list[dict]) -> str:
         if not reply.tool_calls:
             answer = reply.content or ""
             messages.append({"role": "assistant", "content": answer})
+            log_event("agent", answer)
             return answer
 
         # El LLM quiere usar tools: guardamos su petición en el historial...
@@ -242,6 +273,7 @@ def run_turn(messages: list[dict]) -> str:
         )
 
         for call in reply.tool_calls:
+            log_event("agent", call.function.arguments or "{}", call.function.name)
             # ACTUAR: ejecutar la tool contra la API.
             try:
                 args = json.loads(call.function.arguments or "{}")
@@ -251,6 +283,7 @@ def run_turn(messages: list[dict]) -> str:
                 result = call_tool(call.function.name, args)
             else:
                 result = json.dumps({"error": "Los argumentos no son un objeto JSON válido."})
+            log_event("tool", result, call.function.name)
             print(f"   ⚙ {call.function.name}({call.function.arguments or ''}) → {result[:120]}")
 
             # ACTUALIZAR: inyectar el resultado en el historial. El tool_call_id
@@ -260,6 +293,7 @@ def run_turn(messages: list[dict]) -> str:
 
     answer = "Lo siento, no he conseguido terminar esta petición. ¿Puedes decírmela de otra forma?"
     messages.append({"role": "assistant", "content": answer})
+    log_event("agent", answer)
     return answer
 
 
@@ -296,10 +330,12 @@ def main() -> None:
             break
 
         messages.append({"role": "user", "content": user_input})
+        log_event("user", user_input)
         try:
             answer = run_turn(messages)
         except openai.APIError as error:
             print(f"\n[Error al hablar con el LLM: {error}. Inténtalo de nuevo.]")
+            log_event("agent", f"[error del LLM] {error}")
             continue
         except KeyboardInterrupt:
             break
