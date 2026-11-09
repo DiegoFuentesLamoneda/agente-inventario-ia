@@ -227,13 +227,7 @@ def call_tool(name: str, args: dict) -> str:
 # 3. EL BUCLE DEL AGENTE: Observar -> Pensar -> Actuar -> Actualizar -> Repetir
 # =====================================================================
 
-llm = openai.OpenAI(
-    api_key=os.getenv("GROQ_API_KEY"),
-    base_url="https://api.groq.com/openai/v1",
-)
-
-
-def run_turn(messages: list[dict]) -> str:
+def run_turn(llm: openai.OpenAI, messages: list[dict]) -> str:
     """Procesa el último mensaje del usuario hasta tener una respuesta final.
 
     `messages` es el historial completo de la sesión: se modifica aquí mismo
@@ -315,6 +309,12 @@ def main() -> None:
             "    uv run uvicorn api.app:app --reload"
         )
 
+    # Groq habla el mismo "idioma" que la API de OpenAI: basta con cambiar la URL.
+    llm = openai.OpenAI(
+        api_key=os.getenv("GROQ_API_KEY"),
+        base_url="https://api.groq.com/openai/v1",
+    )
+
     print("Asistente de inventario. Escribe tu mensaje (o 'salir' para terminar).")
     # El historial vive en memoria toda la sesión: así el LLM recuerda lo hablado.
     messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -332,7 +332,7 @@ def main() -> None:
         messages.append({"role": "user", "content": user_input})
         log_event("user", user_input)
         try:
-            answer = run_turn(messages)
+            answer = run_turn(llm, messages)
         except openai.APIError as error:
             print(f"\n[Error al hablar con el LLM: {error}. Inténtalo de nuevo.]")
             log_event("agent", f"[error del LLM] {error}")
