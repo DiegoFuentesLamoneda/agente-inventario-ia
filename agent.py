@@ -9,13 +9,38 @@ Arranque (con la API ya en marcha en otro terminal):
 
 import json
 import os
+import sys
 
 import httpx
+import openai
 from dotenv import load_dotenv
 
 load_dotenv()
 
 API_URL = os.getenv("INVENTORY_API_URL", "http://127.0.0.1:8000")
+MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+MAX_STEPS = 8  # vueltas máximas del bucle por mensaje: freno de seguridad
+
+SYSTEM_PROMPT = """Eres el asistente de inventario de la tienda de Carla, que vende \
+suministros para cafeterías. Carla te habla en lenguaje natural para consultar el \
+stock, registrar entregas y ventas, y saber qué se está agotando.
+
+Reglas:
+- Usa SIEMPRE las tools para consultar o cambiar el stock. Nunca inventes cantidades, \
+productos ni ids.
+- Entregas y llegadas suman stock (delta positivo). Ventas, roturas y mermas lo restan \
+(delta negativo).
+- Antes de cambiar stock, mira en list_inventory TODOS los productos que encajan con el \
+nombre que dice Carla. Si encaja más de uno (p. ej. "leche" → Leche entera y Leche de \
+avena), NO cambies nada y pregúntale cuál, aunque antes se haya hablado de uno de ellos.
+- Si habla de un producto que no existe, pregúntale si quiere darlo de alta y con qué \
+unidad antes de crearlo.
+- Si da la cantidad en "unidades" o en otra palabra genérica, cuenta cada una como una \
+unidad del producto (30 unidades de leche en litros → 30 litros), haz el cambio y \
+menciona la equivalencia. Pregunta solo si la conversión necesita un dato que no tienes.
+- Tras cada cambio, di cómo queda el stock y avisa si ha quedado por debajo de 10.
+- Responde en español, en pocas frases y en tono cercano: es una conversación, no un \
+informe. Sin tablas salvo que Carla pida un listado."""
 
 
 # =====================================================================
@@ -166,3 +191,122 @@ def call_tool(name: str, args: dict) -> str:
             {"error": f"Falta el argumento obligatorio {missing} para la tool '{name}'."},
             ensure_ascii=False,
         )
+
+
+# =====================================================================
+# 3. EL BUCLE DEL AGENTE: Observar -> Pensar -> Actuar -> Actualizar -> Repetir
+# =====================================================================
+
+llm = openai.OpenAI(
+    api_key=os.getenv("GROQ_API_KEY"),
+    base_url="https://api.groq.com/openai/v1",
+)
+
+
+def run_turn(messages: list[dict]) -> str:
+    """Procesa el último mensaje del usuario hasta tener una respuesta final.
+
+    `messages` es el historial completo de la sesión: se modifica aquí mismo
+    para que cada vuelta (y cada mensaje futuro) vea todo lo anterior.
+    """
+    for _ in range(MAX_STEPS):
+        # PENSAR: el LLM ve todo el historial y las fichas de las tools.
+        response = llm.chat.completions.create(
+            model=MODEL,
+            messages=messages,
+            tools=TOOLS,
+            temperature=0.2,  # poca creatividad: queremos un agente predecible
+        )
+        reply = response.choices[0].message
+
+        # Sin tools pendientes = respuesta final. Fin limpio del bucle.
+        if not reply.tool_calls:
+            answer = reply.content or ""
+            messages.append({"role": "assistant", "content": answer})
+            return answer
+
+        # El LLM quiere usar tools: guardamos su petición en el historial...
+        messages.append(
+            {
+                "role": "assistant",
+                "content": reply.content or "",
+                "tool_calls": [
+                    {
+                        "id": call.id,
+                        "type": "function",
+                        "function": {"name": call.function.name, "arguments": call.function.arguments},
+                    }
+                    for call in reply.tool_calls
+                ],
+            }
+        )
+
+        for call in reply.tool_calls:
+            # ACTUAR: ejecutar la tool contra la API.
+            try:
+                args = json.loads(call.function.arguments or "{}")
+            except json.JSONDecodeError:
+                args = None
+            if isinstance(args, dict):
+                result = call_tool(call.function.name, args)
+            else:
+                result = json.dumps({"error": "Los argumentos no son un objeto JSON válido."})
+            print(f"   ⚙ {call.function.name}({call.function.arguments or ''}) → {result[:120]}")
+
+            # ACTUALIZAR: inyectar el resultado en el historial. El tool_call_id
+            # le dice al LLM a cuál de sus peticiones responde este resultado.
+            messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
+        # REPETIR: vuelta al principio, el LLM ya ve los resultados.
+
+    answer = "Lo siento, no he conseguido terminar esta petición. ¿Puedes decírmela de otra forma?"
+    messages.append({"role": "assistant", "content": answer})
+    return answer
+
+
+# =====================================================================
+# 4. CLI: leer a Carla desde el terminal e imprimir las respuestas
+# =====================================================================
+
+def main() -> None:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")  # tildes y ñ bien en Windows
+
+    if not os.getenv("GROQ_API_KEY"):
+        sys.exit("Falta GROQ_API_KEY. Copia .env.example como .env y pon tu clave.")
+    try:
+        httpx.get(f"{API_URL}/inventory", timeout=5).raise_for_status()
+    except httpx.HTTPError:
+        sys.exit(
+            f"La API no responde en {API_URL}. Arráncala primero en otro terminal:\n"
+            "    uv run uvicorn api.app:app --reload"
+        )
+
+    print("Asistente de inventario. Escribe tu mensaje (o 'salir' para terminar).")
+    # El historial vive en memoria toda la sesión: así el LLM recuerda lo hablado.
+    messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+    while True:
+        try:
+            user_input = input("\nTú > ").strip()  # OBSERVAR
+        except (EOFError, KeyboardInterrupt):
+            break
+        if not user_input:
+            continue
+        if user_input.lower() in {"salir", "exit", "quit"}:
+            break
+
+        messages.append({"role": "user", "content": user_input})
+        try:
+            answer = run_turn(messages)
+        except openai.APIError as error:
+            print(f"\n[Error al hablar con el LLM: {error}. Inténtalo de nuevo.]")
+            continue
+        except KeyboardInterrupt:
+            break
+        print(f"\nAgente > {answer}")
+
+    print("\n¡Hasta luego!")
+
+
+if __name__ == "__main__":
+    main()
